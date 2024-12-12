@@ -9,8 +9,7 @@ for sub = exp.sub_id(1:end)
     
     ch = 1:128;%Whole scalp
     
-    filename = (['VT_regression_prior_zllr_zllrxsurprise_ERP_allT_subtr_parietalrsq0_P' sub{1}, '_2_LOG.mat'])
-    
+    filename =(['VT_regression_full_ERP_rsq_HP_' num2str(par.hp) '_P' sub{1} '_2.mat'])
     load([exp.dataPath 'P' sub{1} '\' filename]);
     
     %Average over cluster of channels, for all samples
@@ -35,7 +34,9 @@ labels = {'prior', 'llr', 'llrxsurprise'}; %Regressor names
 
 %% Plot figure
 f = figure;
-ylim([-0.008,0.020])
+if par.hp == 0; ylim([-0.008,0.020]); ypos= -0.005;
+elseif par.hp == 1; ylim([-0.03,0.060]);ypos= -0.0225
+ end
 
 patch([0.25,0.25,0.3,0.3]*200,[-0.008,0.020, 0.020, -0.008], 'k', 'FaceAlpha',0.05, 'EdgeColor', 'none'); hold on;
 stdshade(squeeze(nanmean(prior(:,par.chans,1:end),2)), 0.25, hex2rgb('#04080f'),'-',[]); hold on;
@@ -49,7 +50,6 @@ xlabel('Time(s)'); ylabel('Regression coefficients (a.u.)')
 
 hold on;
 colors = {hex2rgb('#04080f'), hex2rgb('#192bc2'),hex2rgb('#78c0e0'), 'g'};
-ypos= -0.005
 
 for stats = [1,2,3]
     thisField = labels{stats}
@@ -60,9 +60,6 @@ for stats = [1,2,3]
                 thisMark = '*';
                         ypos = ypos - 0.001;
                         plot(find((cluster.(thisField).posclusterslabelmat(1,:) ==i)),ypos,'Color', thisCol, 'marker', thisMark, 'markersize', 5)
-
-            else
-                continue;
             end
         end
         hold on;
@@ -74,20 +71,29 @@ for stats = [1,2,3]
                 thisMark = '*';
                 ypos = ypos - 0.001;
                 plot(find((cluster.(thisField).negclusterslabelmat(1,:) ==i)),ypos,'Color', thisCol, 'marker', thisMark, 'markersize', 5)
-
-            else
-                continue;
             end
         end
         hold on;
     end
 end
-
-set(gca, 'fontsize', 10)
+set(gca, 'fontsize', 11)
 box on
+
+ ax3 = axes('Position',[.2 .69 .22 .22]) %25
+    box off
+    load('chanlocsBioSemi_128_noext.mat')
+  nan_dat = repmat(0, 128,1)
+    VT_topoplot(nan_dat,chanlocs, ...
+        'style', 'contour',...
+        'electrodes', 'on', ...
+        'emarker', {'.','k',[],5},...
+        'emarker2', {par.chans, '*', 'k',3,2},...)
+        'numcontour', 1)
+    
+set(gca, 'fontsize', 10)
 
 f.Units = 'centimeters';
 f.OuterPosition = [0.25 0.35 8 10];
 set(gca, 'fontsize', 10)
 
-exportgraphics(f,[exp.figPath, 'Fig4B.tiff'], 'Resolution', 600)
+exportgraphics(f,[exp.figPath, 'Fig3B.tiff'], 'Resolution', 600)

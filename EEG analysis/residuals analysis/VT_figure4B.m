@@ -10,11 +10,10 @@ for s = 1:20
 end
 
 par.clusterTime = [0,1];
-cluster = VT_clusterpermutation_LLRxRes(exp,permData, par, 'tfaRes')
-cluster_eminl = VT_clusterpermutation_LLRxRes(exp,permData, par, 'tfaRes_lme')
+cluster = VT_clusterpermutation_LLRxRes(exp,permData, par, 'tfaRes') %All samples together vs. 0
+cluster_eminl = VT_clusterpermutation_LLRxRes(exp,permData, par, 'tfaRes_lme') %Compare early vs. late 
 
 %% Plot residual effects of front & back, then plot front & back separately 
-
 f = figure;
 colors = [{hex2rgb('#883bd5')}, {hex2rgb('#b88ae6')}, {hex2rgb('#631db0')}]
 

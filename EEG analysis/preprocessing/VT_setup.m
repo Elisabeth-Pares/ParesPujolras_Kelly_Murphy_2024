@@ -2,13 +2,13 @@ function [exp, anPar, plt] = VT_setup(exp)
 
 %% Path variables
 exp.codePath = ['C:\Users\elisa\Desktop\VolatilityTask\Analysis\'];
-exp.dataPath = ['D:\Elisabeth EEG Data\VolatilityTask\Data\']; %P01/S1/EEG ... // P01/S1/Behavioural ... //P01/S1/Eyelink ...
-exp.modPath = ['D:\Elisabeth EEG Data\VolatilityTask\Modelling\']; 
-exp.figPath = ['D:\Elisabeth EEG Data\VolatilityTask\Figures\']; 
+exp.dataPath = ['E:\Elisabeth EEG Data\VolatilityTask\Data\']; %P01/S1/EEG ... // P01/S1/Behavioural ... //P01/S1/Eyelink ...
+exp.modPath = ['E:\Elisabeth EEG Data\VolatilityTask\Modelling\']; 
+exp.figPath = ['E:\Elisabeth EEG Data\VolatilityTask\Figures\']; 
 
 %These are nested
-exp.procBehPath = ['D:\Elisabeth EEG Data\VolatilityTask\Modelling\PreprocessedStim\']
-exp.regPath = ['D:\Elisabeth EEG Data\VolatilityTask\Modelling\Regression results\'];
+exp.procBehPath = ['E:\Elisabeth EEG Data\VolatilityTask\Modelling\PreprocessedStim\']
+exp.regPath = ['E:\Elisabeth EEG Data\VolatilityTask\Modelling\Regression results\'];
 
 addpath(genpath(exp.dataPath));
 addpath(genpath(exp.codePath));

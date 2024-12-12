@@ -138,7 +138,12 @@ if ~exist('deltaLat', 'var')
     % ==================================================================
     fprintf('Concatenating trial- & sample-wise data segments...\n')
     times = times(times>=trlwin(1) & times<=trlwin(2));
-    onsets = 0.4:0.4:0.4*10;  onsets=round(onsets,1);  % vector of all sample onset times relative to pre-mask; epoched around pre-mask on
+    % R1
+    if nsubj < 13
+        onsets = 0.4:0.4:0.4*10;  onsets=round(onsets,1);  % vector of all sample onset times relative to pre-mask; epoched around pre-mask on
+    else
+        onsets = 0.386:0.386:0.386*10;
+    end
     smptimes = times(times>=smpwin(1) & times<=smpwin(2));  % getting vector of sample times relative to dot onset
     
     for s = 1:length(onsets)
@@ -161,12 +166,9 @@ if ~exist('deltaLat', 'var')
             deltaLat(:,s) = squeeze(nanmean(thisDat(:,:,1:0.1*200),3))-squeeze(nanmean(smp_data(:,1,1:0.1*200,s),3));
         else
             deltaLat(:,s) = squeeze(nanmean(smp_data(:,1,1:0.1*200,s+1),3)) - squeeze(nanmean(smp_data(:,1,1:0.1*200,s),3));
-            deltaLat_50ms(:,s) = squeeze(nanmean(smp_data(:,1,1:0.05*200,s+1),3)) - squeeze(nanmean(smp_data(:,1,1:0.05*200,s),3));
-            deltaLat_2samp(:,s) = squeeze(nanmean(smp_data(:,1,1:0.1*200,s+1),3)) - squeeze(nanmean(smp_data(:,1,0.8*200:0.9*200,s),3));
         end
-        %     deltaLat_n2Samps(:,s) = squeeze(nanmean(smp_data(:,1,1:0.1*200,s+1),3)) - squeeze(nanmean(smp_data(:,1,1:0.1*200,s),3));
     end
-    save(['tfa_deltaLat_' subj '_' par.freqBand '.mat'], 'deltaLat', 'deltaLat_50ms', 'deltaLat_2samp', 'sess_r')
+    save(['tfa_deltaLat_' subj '_' par.freqBand '.mat'], 'deltaLat', 'sess_r')
 end
 
 

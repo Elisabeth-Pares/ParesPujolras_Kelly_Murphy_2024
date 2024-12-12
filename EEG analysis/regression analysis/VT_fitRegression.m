@@ -10,7 +10,7 @@ if par.ds == 1, par.dsLab = 'DS'; else par.dsLab = ''; end
 
 smpwin = [0 1.4];  % window for sample-wise analyses
 trlwin = [-0.1 5.4];  % window for full-trial-wise analyses
-
+percReject = [];
 % ==================================================================
 % LOAD DATA
 % ==================================================================
@@ -69,28 +69,37 @@ for sess = 1:exp.nSessions
         [~,sortI] = sort(trialNum);
         sess_data = sess_data(sortI,:,:);
     end
-    
+  
     % If dB transform
     if par.db == 1 & ~strcmp(par.dataType, 'ERP')
+        %Add constant if there are negative values in sess_data to
+        %apply db transform
+        if ~isempty(find(any(sess_data<0)))
+            %Include only motor channels
+            toReject = ~ismember(1:128, exp.movCluster); 
+            sess_data(:,toReject,:) = NaN; 
+            constant = min(sess_data(:));
+            sess_data = sess_data + abs(constant)+1;
+        end
+        assert(isempty(find(any(sess_data<0))))
         baselineTime = round([(0.5-par.baselineTime)*200]):round([0.5*200]);
-        EEG.baselines= squeeze(mean(sess_data(:,:,baselineTime),3)); %Recalculate baselines
+        EEG.baselines= squeeze(nanmean(sess_data(:,:,baselineTime),3)); %Recalculate baselines
         sess_data = 10.*log10(sess_data./nanmean(EEG.baselines));  % convert to dB
     end
-    
+   
     % Baseline TF data
     if strcmp(par.dataType, 'TFA')
         if strcmp(par.baseline, 'preTrial')
             %Get pre-epoch baselines
             baselineTime = round([(0.5-par.baselineTime)*200]):round([0.5*200]);
-            EEG.baselines= squeeze(mean(sess_data(:,baselineTime,:),2)); %Recalculate baselines
             %Specify baselining method
             if strcmp(par.baselineMethod, 'allT_subtr') % As in https://www.frontiersin.org/articles/10.3389/fpsyg.2011.00236/full
-                baselines(:,:) = (nanmean(nanmean(sess_data(t,:, baselineTime),3),1));
+                baselines(:,:) = (nanmean(nanmean(sess_data(:,:, baselineTime),3),1));
                 sess_data(:,:,:) = (sess_data(:,:,:) - baselines(:,:));
             end
         end
     end
-    
+        
     %Keep all trials for plotting
     all_sess_data = sess_data;
     
@@ -101,6 +110,7 @@ for sess = 1:exp.nSessions
     trl_data = cat(1,trl_data,sess_data);
     allT_sess_data = cat(1,allT_sess_data, all_sess_data);
     
+
     sess_full = [sess_full; repmat(sess, size(sess_data,1), 1)];
 
 end
@@ -134,7 +144,6 @@ sess_full(trials2exclude,:) = [];
 assert(length(choices_full)==size(trl_data,1),'ERROR: Trial counts in eeg/behaviour are unequal')
 
 sumData_full = squeeze(nanmean(trl_data,1));
-save(['VT_' par.dataType '_sumData_P' sub '_' num2str(sess),'.mat'], 'trl_data', 'sumData_full');
 
 % ==================================================================
 % MAKE CATEGORICAL SESSION REGRESSORS
@@ -153,7 +162,7 @@ prior_full(:,:) = psi_full(:,2:end);
 % ==================================================================
 % High-pass filter signal, if required
 % ==================================================================
-if par.hpFilt == 1 & strcmp(par.dataType, 'ERP');
+if par.hpFilt == 1 & strcmp(par.dataType, 'ERP') 
     [bfilt,afilt] = butter(3, 1*2/200, 'high');   % hi-pass
     for t = 1:size(trl_data,1)
         for e = 1:size(trl_data,2)
@@ -161,6 +170,8 @@ if par.hpFilt == 1 & strcmp(par.dataType, 'ERP');
         end
     end
 end
+ 
+
 
 % ==================================================================
 % Low-pass filter signal, if required
@@ -179,7 +190,15 @@ end
 % ==================================================================
 fprintf('Concatenating trial- & sample-wise data segments...\n')
 times = times(times>=trlwin(1) & times<=trlwin(2));
-onsets = 0.4:0.4:0.4*10;  onsets=round(onsets,1);  % vector of all sample onset times relative to pre-mask; epoched around pre-mask on
+
+% R1: In participants 13-20, there was a small timing issue whereby SOA was
+% 0.386 rather than 0.4s. Accounting for that here. 
+if nsubj < 13 
+    onsets = 0.4:0.4:0.4*10;  onsets=round(onsets,1);  % vector of all sample onset times relative to pre-mask; epoched around pre-mask on
+else
+    onsets = 0.386:0.386:0.386*10; 
+end
+
 smptimes = times(times>=smpwin(1) & times<=smpwin(2));  % getting vector of sample times relative to dot onset
 
 for s = 1:length(onsets)
@@ -210,6 +229,52 @@ if par.saveData == 1
         dat.smp_data= squeeze(smp_data(:,[1,3,19,21,23,87],:,:));
 end
 
+%R1: exclude samples with saccades? For analysis in Fig. S5
+if par.excludeSacc == 1
+    exTag = 'saccEx';
+    %Load 
+    filename = [subj '_processedEyeData.mat'];
+    thisDir = [exp.dataPath subj '/S2/Eyetracking/'];
+    load([thisDir '\' filename]);
+
+    %Find trials to exclude entirely:
+    % Have <11 saccades, and X & Y positions have less than 3*SD
+    % variability, on average.
+    goodTrials = eyedat.numSacc < 11; %Less than 11 saccades detected
+    goodTrials = (eyedat.stdY < 3*nanmean(eyedat.stdY(goodTrials)) & eyedat.nanstdX <3*nanmean(eyedat.nanstdX(goodTrials)) & goodTrials);
+    badTrials = goodTrials == 0;
+    
+    isfull = ~isnan(eyedat.sacMat(:,10))
+    badTrials(~isfull) = []; 
+    saccMat = eyedat.sacMat(isfull,:); %Saccade yes/no matrix
+
+    % Participant 1 has some missing EEG trials
+    if strcmp(sub, '01'); idcs = [225:235];  
+        badTrials(idcs) = []; goodTrials(idcs) = [];
+        saccMat(idcs,:) = []; 
+    end
+    %Check dimensions match 
+    assert(length(badTrials) == size(smp_data,1));
+    assert(size(saccMat,1) == size(smp_data,1));
+
+    % Exclude data:
+    nSamp = numel(deltaPsi); 
+    nNan = sum(sum(isnan(deltaPsi))); 
+    smp_data(badTrials,:,:) = NaN;
+    deltaPsi(badTrials,:) = NaN; 
+    llr_full(badTrials,:) = NaN; 
+    session(badTrials,:) = NaN; 
+    
+    %Additionally, exclude single samples where saccades were detected:
+    deltaPsi(logical(saccMat)) = NaN; 
+    llr_full(logical(saccMat)) = NaN; 
+    
+    percReject = (sum(sum(isnan(deltaPsi)))-nNan)/nSamp*100; 
+    
+else
+    exTag = '';
+end
+    
 if par.fit == 1
     
     % ==================================================================
@@ -221,22 +286,23 @@ if par.fit == 1
     fprintf('Running regressions...\n Sample ')
     
     if strcmp(par.chans, 'parietal')
-       if strcmp(par.dataType, 'TFA'); electrodes = exp.movCluster(:)';
+       if strcmp(par.dataType, 'TFA'); electrodes = 1:128;%exp.movCluster(:)';
        else
            electrodes = 1:128;
        end
        
-    elseif strcmp(par.chans, 'lateralisation')
+    elseif strcmp(par.chans, 'lateralisation') & size(smp_data,2)>1 
         electrodes = 1; %lateralisation signal
-        newSmpData =  nanmean(smp_data(:,exp.movCluster(2,:),:,:),2) - nanmean(smp_data(:,exp.movCluster(1,:),:,:),2); %Before, 1:6
+        newSmpData =  nanmean(smp_data(:,exp.movCluster(2,:),:,:),2) - nanmean(smp_data(:,exp.movCluster(1,:),:,:),2); 
         clear smp_data;
         smp_data = newSmpData;
+        
     end
     
-    %LOGIT transform surprise 
+    %LOGIT transform surprise to reduce skewness
     surprise_full = log(surprise_full./(1-surprise_full));  %log(pCP/(1-pCP))
    
-    for s = 1:size(smp_data,4)%-1  % looping through samples
+    for s =1:9 % looping through samples
         fprintf('%d, ',s)
         for e = electrodes % looping through electrodes OR frequencies
             for t = 1:EEG.srate % looping through time-points (1 s after each sample)
@@ -249,6 +315,10 @@ if par.fit == 1
                     elseif strcmp(par.regName, 'psi_deltaPsi')
                         regNames = {'prior', 'deltaPsi'};
                         regressors = nanzscore([prior_full(:,s) deltaPsi_signed(:,s+1) sess_r]);
+                        m = regstats(nanzscore(smp_data(:,e,t,s+1)),regressors,'linear',{'beta','tstat','rsquare', 'r', 'adjrsquare'});
+                    elseif strcmp(par.regName, 'absPsi_deltaPsi_signedLat') %R1: reply to reviewers
+                        regNames = {'prior', 'deltaPsi'};
+                        regressors = nanzscore([abs(prior_full(:,s)) abs(deltaPsi_signed(:,s+1)) sess_r]);
                         m = regstats(nanzscore(smp_data(:,e,t,s+1)),regressors,'linear',{'beta','tstat','rsquare', 'r', 'adjrsquare'});
                     elseif strcmp(par.regName, 'LLR')
                         regNames = {'LLR'};
@@ -267,7 +337,7 @@ if par.fit == 1
                 elseif strcmp(par.llr, 'abs') % For CPP analysis
                     %  Regression is the same, but with abs rather than signed LLR values.
                     LLR_full = abs(llr_full);
-                    prior_full = abs(prior_full);
+                    if ~strcmp(par.regName, 'signedPsi'), prior_full = abs(prior_full); end
                     
                     if strcmp(par.regName, 'full')
                         regNames = {'prior', 'zLLR', 'zLLRxSurprise'};
@@ -275,20 +345,28 @@ if par.fit == 1
                     elseif strcmp(par.regName, 'deltaPsi')
                         regNames = {'deltaPsi'};
                         m = regstats(nanzscore(smp_data(:,e,t,s)),nanzscore([deltaPsi(:,s) sess_r]),'linear',{'beta','tstat','adjrsquare','r'});  % signed prior, LLR, LLR*surprise & LLR*UNcertainty (-|psi|)
+                    elseif strcmp(par.regName, 'psi_deltaPsi') %R1: Psi_deltaPsi - reply to reviewers
+                        regNames = {'psi', 'deltaPsi'};
+                        m = regstats(nanzscore(smp_data(:,e,t,s+1)),nanzscore([prior_full(:,s) deltaPsi(:,s+1) sess_r]),'linear',{'beta','tstat','adjrsquare','r'});  % signed prior, LLR, LLR*surprise & LLR*UNcertainty (-|psi|)
+                    elseif strcmp(par.regName, 'signed_deltaPsi') %R1: signed_deltaPsi - reply to reviewers
+                        regNames = {'deltaPsi'};
+                        m = regstats(nanzscore(smp_data(:,e,t,s)),nanzscore([deltaPsi_signed(:,s) sess_r]),'linear',{'beta','tstat','adjrsquare','r'});  % signed prior, LLR, LLR*surprise & LLR*UNcertainty (-|psi|)
                     elseif strcmp(par.regName, 'updatedPsi')
                         regNames = {'updatedPsi'};
                         m = regstats(nanzscore(smp_data(:,e,t,s)),nanzscore([prior_full(:,s) sess_r]),'linear',{'beta','tstat','rsquare','adjrsquare','r'});  % signed prior, LLR, LLR*surprise & LLR*UNcertainty (-|psi|)
                     elseif strcmp(par.regName, 'prior')
                         regNames = {'prior'};
-                        m = regstats(nanzscore(smp_data(:,e,t,s+1)),nanzscore([prior_full(:,s), sess_r]),'linear',{'beta','tstat','rsquare', 'adjrsquare'});  % signed prior, LLR, LLR*surprise & LLR*UNcertainty (-|psi|)
-                    elseif strcmp(par.regName, 'zLLR')
-                        m = regstats(nanzscore(smp_data(:,e,t,s+1)),nanzscore([LLR_full(:,s+1), sess_r]),'linear',{'beta','tstat','rsquare', 'adjrsquare'});  % signed prior, LLR, LLR*surprise & LLR*UNcertainty (-|psi|)
-                        regNames = {'zLLR'};
+                        m = regstats(nanzscore(smp_data(:,e,t,s)),nanzscore([prior_full(:,s), sess_r]),'linear',{'beta','tstat','rsquare', 'adjrsquare'});  % signed prior, LLR, LLR*surprise & LLR*UNcertainty (-|psi|)
+                    elseif strcmp(par.regName, 'LLR')
+                        m = regstats(nanzscore(smp_data(:,e,t,s)),nanzscore([LLR_full(:,s), sess_r]),'linear',{'beta','tstat','rsquare', 'adjrsquare'});  % signed prior, LLR, LLR*surprise & LLR*UNcertainty (-|psi|)
+                        regNames = {'LLR'};
                     elseif strcmp(par.regName, 'surprise')
-                        m = regstats(nanzscore(smp_data(:,e,t,s+1)),nanzscore([surprise_full(:,s+1) sess_r]),'linear',{'beta','tstat','rsquare', 'adjrsquare'});  % signed prior, LLR, LLR*surprise & LLR*UNcertainty (-|psi|)
+                        m = regstats(nanzscore(smp_data(:,e,t,s)),nanzscore([surprise_full(:,s) sess_r]),'linear',{'beta','tstat','rsquare', 'adjrsquare'});  % signed prior, LLR, LLR*surprise & LLR*UNcertainty (-|psi|)
+                        regNames = {'surprise'};
+                    elseif strcmp(par.regName, 'intercept')
+                        m = regstats(nanzscore(smp_data(:,e,t,s)),nanzscore([sess_r]),'linear',{'beta','tstat','rsquare', 'adjrsquare'});  % signed prior, LLR, LLR*surprise & LLR*UNcertainty (-|psi|)
                         regNames = {'intercept'};
                     end
-                  
                 end
                 
                 % Save beta coefficients and residuals
@@ -297,8 +375,12 @@ if par.fit == 1
                     dat.(thisReg).beta(e,t,s) = m.beta(r+1); %Beta coefficients
 
                     if r == 1 
-                        dat.(thisReg).r(e,t,s,:) = m.r; %Residuals
-                        dat.(thisReg).adjrsquare(e,t,s,:) = m.adjrsquare; %Adjusted Rsquared
+                        if strcmp(par.regName, 'deltaPsi') & strcmp(par.dataType, 'ERP') & par.hpFilt == 1
+                            dat.(thisReg).r(e,t,s,:) = m.r; %Residuals
+                        end
+                        if par.save_aR2 == 1
+                            dat.(thisReg).adjrsquare(e,t,s,:) = m.adjrsquare; %Adjusted Rsquared
+                        end
                     end
                 end
                 
@@ -306,14 +388,14 @@ if par.fit == 1
         end
     end
 
-
+dat.percReject = percReject; 
 dat.modelType = 'fitted_glaze';
 fprintf('Done.\n')
 
 thisPath = ['P' sub];
 fullPath = ([exp.dataPath, thisPath]);
 
-save([fullPath, '\VT_regression_' par.regName '_' par.dataType, '_rsq_HP_' num2str(par.hpFilt) '_P' sub, '_' num2str(sess)], 'dat','-v7.3')
+save([fullPath, '\VT_regression_' par.regName '_' par.chans '_' par.dataType, '_rsq_HP_' num2str(par.hpFilt) exTag '_P' sub, '_' num2str(sess)], 'dat','-v7.3')
 
 end
 end

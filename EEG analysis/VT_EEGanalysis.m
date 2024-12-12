@@ -10,7 +10,7 @@
 % bioRxiv, 2024-05.[https://www.biorxiv.org/content/10.1101/2024.05.15.594345v2]
 
 %% Set up analysis parameters 
-
+clear; close all; 
 cd('C:\Users\elisa\Desktop\VolatilityTask\Analysis');
 addpath(genpath('C:\Users\elisa\Desktop\VolatilityTask\Analysis\'));
 
@@ -104,17 +104,21 @@ end
 par.regName = 'deltaPsi'%Which regression to run?
 par.dataType = 'ERP';  %TFA (for MBL) or ERP (for CPP);
 par.chans = 'parietal' %Lateralisation (for MBL) or parietal (for CPP); 
+par.save_aR2 = 0;  %Do we want to save goodness of fit (adjRsq) for this regression?
+par.saveData =1; 
+par.ds = 1;
+par.excludeSacc = 1; %Exclude samples with saccades?
 
 par.lowFilt = 1; %Apply low-pass filter (<6Hz). Always set to 1: reduces noise in single-trial regressions. 
-par.hpFilt = 1; %Apply high-pass filter (>1Hz). Set to 1 for residuals analysis to remove slow drift. 
+par.hpFilt = 0; %Apply high-pass filter (>1Hz). Set to 1 for residuals analysis to remove slow drift. 
 
 par.epoch = 'SL';
-par.baseline = 'preTrial'; %Options = 'preTrial'; 
+par.baseline = 'none'; %Options = 'preTrial'; 
 par.baselineMethod = 'allT_subtr'; %Options: allT_subtr.
 par.baselineTime = [0.1];
 par.csdLab = 'csd_';
 
-par.db = 1; %DB transform data
+par.db = 0; %DB transform data
 
 %Which LLR & prior values to use in regression: 'rel' for relative, signed; 'abs' for absolute, unsigned.
 if strcmp(par.dataType, 'ERP')
@@ -125,12 +129,11 @@ end
 
 par.avFrex = 1;
 par.fit = 1; 
-par.saveData =1; 
-par.ds = 1;
 
-allSum = []; 
+
 for sub = 1:length(exp.sub_id)  
     [sumData] = VT_fitRegression(sub,exp,par);
+    if par.excludeSacc; percReject(sub,1) = sumData.percReject; end
 end
 
 %% Plot results
@@ -142,7 +145,7 @@ VT_figure3(exp)
 %% Compare adjusted Rsquares
 % Produces plots comparing fits of objective evidence (LLR),
 % effective evidence (deltaPsi), and belief (updatedPsi).
-par.dataType = 'TFA'; %ERP for CPP analysis, TFA for MBL analysis.
+par.dataType = 'ERP'; %ERP for CPP analysis, TFA for MBL analysis.
 VT_adjRsquaredPlots(exp,par)
 
 %% ========================================================================

@@ -7,16 +7,16 @@ for sub = exp.sub_id([1:20])
     thisPath = ['P' sub{1}];
     fullPath = ([exp.dataPath, thisPath]);
     cd(fullPath)
-    filename = ['VT_regression_psi_effEv_TFA_allT_subtr_lateralisationrsq0_P' sub{1} '_2.mat']; 
+    filename = ['VT_regression_psi_deltaPsi_TFA_rsq_HP_1_P' sub{1} '_2.mat']; 
     load(filename);
     disp(['Processing P' sub{1} '...'])
 
     for s = 1:9
         allP.leftMinRight_psi(id,s,:) =  squeeze(dat.prior.beta(:,:,s));
-        allP.leftMinRight_effEv(id,s,:) =  squeeze(dat.effEv.beta(:,:,s));
+        allP.leftMinRight_effEv(id,s,:) =  squeeze(dat.deltaPsi.beta(:,:,s));
     end
     
-        adjRsq(id) = nanmean(nanmean(dat.prior.adjrsquare));
+%         adjRsq(id) = nanmean(nanmean(dat.prior.adjrsquare));
 
 end
 

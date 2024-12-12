@@ -2,15 +2,15 @@
 % Permutation parameters 
 function [cluster] = VT_clusterpermutation_ERP(exp,permData, par, figName)
 cfg_dat = struct;
-close all; 
+% close all; 
 load('C:\Users\elisa\Desktop\VolatilityTask\Analysis\functions\chanlocsBioSemi_128_noext.mat')
 
 chans =[1:128]; 
 figure; topoplot([], chanlocs(chans))
 
 chans = par.chans; 
-cfg_dat.label       = {chanlocs.labels};  %Channel locations; (exp.CPPCluster_small)
-cfg_dat.label       =  cfg_dat.label(chans);  %{'MotorLat'};Channel locations; (exp.CPPCluster_small)
+cfg_dat.label       = {chanlocs.labels};  %Channel locations; 
+cfg_dat.label       =  cfg_dat.label(chans);  %{'MotorLat'};Channel locations; 
 
 cfg = struct();
 cfg.feedback = 'yes';
@@ -174,13 +174,13 @@ if strcmp(par.averageChan, 'no')
             VT_topoplot(thisTopoTimes,chanlocs(1:128), ...
                 'electrodes', 'off', ...
                 'emarker', {'.','k',[],5},...
-                'emarker2', {unique([postBroad, exp.posteriorCluster]), '*', 'k',2,0.5},...)
+                'emarker2', {exp.centroParietal, '*', 'k',2,0.5},...)
                 'numcontour', 0, ...
                 'plotrad',0.65, ...
                 'headrad', 0.5)
 
-            caxis([-0.045 0.045]);
-%                         caxis([-0.015 0.015]);
+%             caxis([-0.045 0.045]);
+                        caxis([-0.015 0.015]);
 
             colorbar
         end

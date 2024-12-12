@@ -1,4 +1,4 @@
-function [gaDat] = VT_psiQuartiles_ERP(nsubj,exp,par, gaDat) 
+function [gaDat] = VT_CPnoCP_ERP(nsubj,exp,par, gaDat) 
 allsubj = exp.sub_id; % ORDER IS IMPORTANT FOR TRIAL-IDs!!!!
 sub = allsubj{nsubj};
 
@@ -32,7 +32,6 @@ for sess = 1:exp.nSessions %(strcmp(allsubj,sub))
     % Load preprocessed & epoched EEG data
     EEG = pop_loadset( [fullPath '\csd_DSacICASL_f01fc_P' sub '_S' num2str(sess) '.set'] );
     
-   
     xline([0.4*EEG.srate]); xline([0.5*EEG.srate]); sgtitle(['P' sub, ', S' num2str(sess)])
     hold on;
     
@@ -66,9 +65,17 @@ for sess = 1:exp.nSessions %(strcmp(allsubj,sub))
     
     sess_full = [sess_full; repmat(sess, size(sess_data,1), 1)];
 
+    %Get change point times 
+    cpPath = ['P' sub '\S' num2str(sess) '\Sample_seqs\'];
+    fullPath = ([exp.dataPath, cpPath]);
+    files = dir(fullPath); if ~exist('allCP', 'var'); allCP = []; end
+    for b = 1:length(files)-2; 
+        filename = [sub '_' num2str(sess) '_' num2str(b) '.mat']; 
+        load([fullPath, filename]);
+        fullIdx = ~isnan(pswitch(:,10));
+        allCP = [allCP; pswitch(fullIdx,:)]; 
+    end
 end
-
-% load and concatenate behaviour/pupil
 load(['C:\Users\elisa\Desktop\VolatilityTask\Analysis\ProcStim_fitted_glaze_' subj '_S2.mat']) % This MDLVARS. comes from here_
 choices = dat.fitted_glaze.choices;
 choices_full = dat.fitted_glaze.choices_full;
@@ -76,9 +83,15 @@ psi_full = dat.fitted_glaze.psi_full;
 llr_full = dat.fitted_glaze.oLLR_full;
 surprise_full = dat.fitted_glaze.surprise_full;
 
+assert(size(allCP,1) == size(dat.fitted_glaze.psi_full,1)); 
+cp_full = allCP;
+
+
 %Check that length of behaviour & EEG are the same
 %assert(isempty(find((mne_ids'-trialID)~=0, 1)),'ERROR: Mismatch in eeg/behaviour trial IDs')
-if strcmp(sub, '01'); idcs = [225:235];  psi_full(idcs,:) = []; llr_full(idcs,:) = []; surprise_full(idcs,:) = []; choices_full(idcs,:)=[]; 
+if strcmp(sub, '01'); idcs = [225:235]; 
+    psi_full(idcs,:) = []; llr_full(idcs,:) = []; surprise_full(idcs,:) = []; choices_full(idcs,:)=[];  
+    cp_full(idcs,:) = []; 
     wholeIdx = [321:335]; dat.fitted_glaze.LLR(wholeIdx,:) = [];
 end
 
@@ -93,7 +106,7 @@ trials2exclude = unique(ridx);
 trl_data(trials2exclude,:,:) = [];
 sess_full(trials2exclude,:) = [];
 
-assert(length(choices_full)==size(trl_data,1),'ERROR: Trial counts in eeg/behaviour are unequal')
+assert(length(cp_full)==size(trl_data,1),'ERROR: Trial counts in eeg/behaviour are unequal')
 
 % ==================================================================
 % MAKE CATEGORICAL SESSION REGRESSORS
@@ -133,7 +146,7 @@ times = times(times>=trlwin(1) & times<=trlwin(2));
 if nsubj < 13
     onsets = 0.4:0.4:0.4*10;  onsets=round(onsets,1);  % vector of all sample onset times relative to pre-mask; epoched around pre-mask on
 else
-    onsets = 0.386:0.386:0.386*10; % onsets=round(onsets,1);  % vector of all sample onset times relative to pre-mask; epoched around pre-mask on
+    onsets = 0.386:0.386:0.386*10; 
 end
 smptimes = times(times>=smpwin(1) & times<=smpwin(2));  % getting vector of sample times relative to dot onset
 
@@ -160,36 +173,43 @@ effPrior = abs(diff(psi_full,1,2));
 effPrior_signed = (diff(psi_full,1,2));
 
 
-%% Find extreme |LLRs| & median split by deltaPsi
-% to illustrate that given = LLR, high deltaPsi --> higher evoked ERP
+%% Find CP and get deltaPsi
+% To illustrate that, on average, change points are associated with higher
+% values of deltaPsi 
 
-rllr_full = llr_full;
-rllr_full = reshape(rllr_full,[size(rllr_full,1)*size(rllr_full,2),1]); 
+rcp_full = cp_full;
+rcp_full = reshape(rcp_full,[size(rcp_full,1)*size(rcp_full,2),1]); 
 reffPrior = reshape(effPrior,[size(effPrior,1)*size(effPrior,2),1]); 
 
-okIdx = abs(rllr_full) >= par.maxLLR;%== maxLLR;
-nanIdx = abs(rllr_full) < par.maxLLR;%~= maxLLR;
+cpIdx = rcp_full == 1;
+nocpIdx= rcp_full == 0; 
 
-maxLLR_effPrior = reffPrior; 
-maxLLR_effPrior(nanIdx) = NaN;
+% maxLLR_effPrior = reffPrior; 
+% maxLLR_effPrior(nanIdx) = NaN;
 
-[groupIdx] = quantileranks(abs(reffPrior(okIdx)), par.nGroups);
+% [groupIdx] = quantileranks(abs(reffPrior(okIdx)), par.nGroups);
 
 reshapedData = squeeze(nanmean(smp_data(:,exp.centroParietal,:,:),2));
 reshapedData = permute(reshapedData, [1,3,2]);
 reshapedData = reshape(reshapedData,[],size(reshapedData,3),1);
 
-s_reffPrior = reffPrior(okIdx);
-s_rllr_full = rllr_full(okIdx);
-s_reshapedData = reshapedData(okIdx,:);
-for i = 1:par.nGroups
-    idx{i} = groupIdx == i; 
-    groupLab = ['group' num2str(i)];
-    gaDat.(groupLab).data(nsubj,:) = nanmean(s_reshapedData(idx{i},1:200));
-    gaDat.(groupLab).mean_deltaPsi(nsubj,:) = nanmean((s_reffPrior(idx{i}))); 
-    gaDat.(groupLab).mean_LLR(nsubj,:)  = nanmean(abs(s_rllr_full(idx{i})));
-end
+s_cp_reffPrior = reffPrior(cpIdx);
+s_cp_rcp_full = rcp_full(cpIdx);
+s_cp_reshapedData = reshapedData(cpIdx,:);
 
+s_nocp_reffPrior = reffPrior(nocpIdx);
+s_nocp_rcp_full = rcp_full(nocpIdx);
+s_nocp_reshapedData = reshapedData(nocpIdx,:);
+
+%CP
+gaDat.cp.data(nsubj,:) = nanmean(s_cp_reshapedData(:,1:200));
+gaDat.cp.mean_deltaPsi(nsubj,:) = nanmean((s_cp_reffPrior(:)));
+gaDat.cp.mean_LLR(nsubj,:)  = nanmean(abs(s_cp_rcp_full(:)));
+
+%NO CP
+gaDat.nocp.data(nsubj,:) = nanmean(s_nocp_reshapedData(:,1:200));
+gaDat.nocp.mean_deltaPsi(nsubj,:) = nanmean((s_nocp_reffPrior(:)));
+gaDat.nocp.mean_LLR(nsubj,:)  = nanmean(abs(s_nocp_rcp_full(:)));
 
 end
 

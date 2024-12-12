@@ -1,4 +1,4 @@
-function [cluster] = VT_clusterpermutation_ERP_effEv(exp,permData, par, figName)
+function [cluster] = VT_clusterpermutation_CPnoCP(exp,permData, par, figName)
 
 % Run cluster-based permutation tests
 % Permutation parameters 
@@ -70,17 +70,20 @@ cfg.uvar                = 2; % the 2nd row in cfg.design contains the subject nu
 
 %Null condition 
 for s = 1:20
-    all_trl_effEv{s} = cfg_dat; all_trl_effEv{s}.values = permData.effEv{s}(chans,:);%(exp.CPPCluster_small,:);
-     
-    all_trl_null{s} = cfg_dat;
-    all_trl_null{s}.values = zeros(size(all_trl_effEv{1}.values,1),size(all_trl_effEv{1}.values,2))
+    all_trl_cp{s} = cfg_dat; all_trl_cp{s}.values = permData.cp{s}(chans,:);%(exp.CPPCluster_small,:);
+    all_trl_nocp{s} = cfg_dat; all_trl_nocp{s}.values = permData.nocp{s}(chans,:);%(exp.CPPCluster_small,:);
+    all_trl_diff{s} = cfg_dat; all_trl_diff{s}.values = all_trl_cp{s}.values-all_trl_nocp{s}.values;
+
+    all_trl_null{s} = cfg_dat; all_trl_null{s}.values = zeros(size(all_trl_cp{1}.values,1),size(all_trl_cp{1}.values,2))
 
 end
 
 cluster.channels = exp.centroParietal;  
-stat1 = ft_timelockstatistics(cfg,all_trl_effEv{:},all_trl_null{:});
+stat1 = ft_timelockstatistics(cfg,all_trl_cp{:},all_trl_nocp{:});
+stat2 = ft_timelockstatistics(cfg,all_trl_diff{:},all_trl_null{:});
 
 cluster.stat1 = stat1;
+cluster.stat2 = stat2;
 
 %% Plot results & significant channels 
 % 

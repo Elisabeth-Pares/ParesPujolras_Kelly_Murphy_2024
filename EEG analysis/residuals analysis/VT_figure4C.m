@@ -24,13 +24,13 @@ end
 % Cluster analysis 
 maxS = 10
 for s = 1:20
-    permData.effEvxCPPres{s} = squeeze(nanmean(allP.effEvxCPPres_all.timeResolved_frontPostCluster(s,:,1:maxS),3));
-    permData.effEvxCPPres_fminusb{s}  = squeeze(nanmean(allP.effEvxCPPres_all.timeResolved_frontalCluster(s,:,1:maxS),3)) - squeeze(nanmean(allP.effEvxCPPres_all.timeResolved_posteriorCluster(s,:,1:maxS),3)); 
-    permData.effEvxCPPres_eml_fp{s}  = squeeze(nanmean(allP.effEvxCPPres_all.timeResolved_frontPostCluster(s,:,1:7),3)) - squeeze(nanmean(allP.effEvxCPPres_all.timeResolved_frontPostCluster(s,:,8:maxS),3));
-    permData.effEvxCPPres_eml_f{s}  = squeeze(nanmean(allP.effEvxCPPres_all.timeResolved_frontalCluster(s,:,1:7),3)) - squeeze(nanmean(allP.effEvxCPPres_all.timeResolved_frontalCluster(s,:,8:maxS),3));
+    permData.effEvxCPPres{s} = squeeze(nanmean(allP.effEvxCPPres_all.timeResolved_frontPostCluster(s,:,1:maxS),3)); %Anterior & posterior electrodes 
+    permData.effEvxCPPres_fminusb{s}  = squeeze(nanmean(allP.effEvxCPPres_all.timeResolved_frontalCluster(s,:,1:maxS),3)) - squeeze(nanmean(allP.effEvxCPPres_all.timeResolved_posteriorCluster(s,:,1:maxS),3));  %Anterior vs. posterior electrodes
+    permData.effEvxCPPres_eml_fp{s}  = squeeze(nanmean(allP.effEvxCPPres_all.timeResolved_frontPostCluster(s,:,1:7),3)) - squeeze(nanmean(allP.effEvxCPPres_all.timeResolved_frontPostCluster(s,:,8:maxS),3)); %Early vs. late samples in all electroddes (ant & post cluster)
+    permData.effEvxCPPres_eml_f{s}  = squeeze(nanmean(allP.effEvxCPPres_all.timeResolved_frontalCluster(s,:,1:7),3)) - squeeze(nanmean(allP.effEvxCPPres_all.timeResolved_frontalCluster(s,:,8:maxS),3)); %Early vs. late samples in anterior electrodes
 end
 
-par.lat = [0.1 0.5];
+par.lat = [0.1 0.5]; %Restrict cluster test time 
 [cluster] = VT_TFA_cluster_CPPxBeta(permData, par, 'effEvxCPPres')
 [cluster_fmb] = VT_TFA_cluster_CPPxBeta(permData, par, 'effEvxCPPres_fminusb')
 [cluster_eml_fp] = VT_TFA_cluster_CPPxBeta(permData, par, 'effEvxCPPres_eml_fp')

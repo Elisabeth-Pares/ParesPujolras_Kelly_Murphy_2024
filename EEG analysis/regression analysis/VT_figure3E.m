@@ -1,4 +1,4 @@
-function [] = VT_figure3D(exp, par)
+function [] = VT_figure3E(exp, par)
 
 %% Extract or load data
 par.smpwin = [0 1.4];  % window for sample-wise analyses
@@ -98,7 +98,6 @@ else
     f.Units = 'centimeters';
     f.OuterPosition = [0.25 0.35 12 10];  
     
-
 end
 
 exportgraphics(f,[exp.figPath, 'Fig3D.tiff'], 'Resolution', 600)

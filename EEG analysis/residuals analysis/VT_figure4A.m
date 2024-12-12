@@ -1,19 +1,24 @@
 function [] = VT_figure4A(exp, par)
 %% Figure 4. Panel A - Cluster analysis of residual effects
-load([exp.dataPath, 'GA_CPPxRes_regression.mat'], 'GA') %Output from VT_eeg2behRegression_timeRes_v2
+load([exp.dataPath, 'GA_CPPRes_choice_timeRes_regression.mat'], 'GA') %Output from VT_eeg2behRegression
 
 clear permData
 maxS = 10
+par.thisModel = 'CPPRes_choice_timeRes'; 
+
 for s = 1:20
-    permData.LLRxRes{s} = squeeze(nanmean(GA.(par.thisModel).timeResolved_frontPostCluster.Res(s,1:maxS,:),2))';
-    permData.LLRxRes_f{s} = squeeze(nanmean(GA.(par.thisModel).timeResolved_frontalCluster.Res(s,1:maxS,:),2))';
-    permData.LLRxRes_b{s} = squeeze(nanmean(GA.(par.thisModel).timeResolved_posteriorCluster.Res(s,1:maxS,:),2))';
-    permData.LLRxRes_fminb{s} = squeeze(nanmean(GA.(par.thisModel).timeResolved_frontalCluster.Res(s,1:maxS,:),2))'-squeeze(nanmean(GA.(par.thisModel).timeResolved_posteriorCluster.Res(s,1:maxS,:),2))'; 
+    permData.LLRxRes{s} = squeeze(nanmean(GA.(par.thisModel).timeResolved_frontPostCluster.Res(s,1:maxS,:),2))'; %Anterior & posterior electrodes
+    permData.LLRxRes_f{s} = squeeze(nanmean(GA.(par.thisModel).timeResolved_frontalCluster.Res(s,1:maxS,:),2))'; %Anterior electrodes only 
+    permData.LLRxRes_b{s} = squeeze(nanmean(GA.(par.thisModel).timeResolved_posteriorCluster.Res(s,1:maxS,:),2))'; %Posterior electrodes only 
+    permData.LLRxRes_fminb{s} = squeeze(nanmean(GA.(par.thisModel).timeResolved_frontalCluster.Res(s,1:maxS,:),2))'-squeeze(nanmean(GA.(par.thisModel).timeResolved_posteriorCluster.Res(s,1:maxS,:),2))';  %Anterior vs. Posterior
+    permData.LLRxRes_eminl{s} = squeeze(nanmean(GA.(par.thisModel).timeResolved_frontPostCluster.Res(s,1:7,:),2))'-squeeze(nanmean(GA.(par.thisModel).timeResolved_frontPostCluster.Res(s,8:maxS,:),2))'; %Early vs. Late
+
 end
 
-par.clusterTime = [0.15 0.5];
+par.clusterTime = [0.1 0.5]; %Restrict cluster test time to main effect window
 cluster = VT_clusterpermutation_LLRxRes(exp,permData, par, 'LLRxRes')
 cluster_fminb = VT_clusterpermutation_LLRxRes(exp,permData, par, 'LLRxRes_fminb')
+cluster_eminl = VT_clusterpermutation_LLRxRes(exp,permData, par, 'LLRxRes_eminl')
 
 %% Plot residual effects of front & back, then plot front & back separately 
 
@@ -25,7 +30,6 @@ patch([par.clusterTime(1) par.clusterTime(1) par.clusterTime(2) par.clusterTime(
 hold on;
 stdshade(squeeze(nanmean(GA.(par.thisModel).timeResolved_frontPostCluster.Res(:,1:maxS,:),2)),0.15,colors{1},'-', [], 1)
 
-% stdshade(squeeze(nanmean(GA.(par.thisModel).timeResolved_c.Res(:,1:maxS,:),2)),0.15,colors{1},'-', [], 1)
 yline([0,0], '--k');
 ylabel('LLR weight modulation (a.u.)')
 ylim([-0.05,0.075])
@@ -155,7 +159,6 @@ hold on;
 end
 
 subplot(1,3,3)
-% patch([par.clusterTime(1) par.clusterTime(1) par.clusterTime(2) par.clusterTime(2)]*200,[-0.05,0.1 0.1 -0.05], 'k', 'FaceAlpha',0.05, 'EdgeColor', 'none')
 stdshade(squeeze(nanmean(GA.(par.thisModel).timeResolved_frontPostCluster.Res(:,1:7,:),2)),0.15,colors{1},'--', [], 1); hold on; %
 stdshade(squeeze(nanmean(GA.(par.thisModel).timeResolved_frontPostCluster.Res(:,8:10,:),2)),0.15, colors{1},'-', [], 1); hold on
 patch([par.clusterTime(1) par.clusterTime(1) par.clusterTime(2) par.clusterTime(2)]*200,[-0.05,0.1 0.1 -0.05], 'k', 'FaceAlpha',0.05, 'EdgeColor', 'none')
@@ -177,7 +180,7 @@ elseif strcmp(thisRes, 'timeResolved_frontPostCluster')
     chanSel = exp.frontBackCluster;
 end
 
-nan_dat = repmat(0,1,128)%size(allP.allDiff_allEv.fullTrials,3));
+nan_dat = repmat(0,1,128)
 VT_topoplot(nan_dat,chanlocs(1:128), ...
     'style', 'contour',...
     'electrodes', 'off', ...

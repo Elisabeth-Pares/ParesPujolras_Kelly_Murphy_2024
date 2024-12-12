@@ -8,7 +8,7 @@ for sub = exp.sub_id([1:20])
     thisPath = ['P' sub{1}];
     fullPath = ([exp.dataPath, thisPath]);
     cd(fullPath)
-        filename = ['VT_regression_standard_noUnc_TFA_allT_subtr_lateralisationrsq1_P' sub{1} '_2_LOG.mat'];
+    filename = ['VT_regression_full_TFA_rsq_HP_1_P' sub{1} '_2.mat'];
 
     load(filename);
     disp(['Processing P' sub{1} '...'])
@@ -60,7 +60,7 @@ for stats = [1:3]
     end
     
     hold on;
-    set(gca, 'fontsize', 7) 
+    set(gca, 'fontsize', 10) 
 end
 
 f.Units = 'centimeters';

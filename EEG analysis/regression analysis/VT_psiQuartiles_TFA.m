@@ -135,7 +135,12 @@ end
 % ==================================================================
 fprintf('Concatenating trial- & sample-wise data segments...\n')
 times = times(times>=trlwin(1) & times<=trlwin(2));
-onsets = 0.4:0.4:0.4*10;  onsets=round(onsets,1);  % vector of all sample onset times relative to pre-mask; epoched around pre-mask on
+% R1
+if nsubj < 13
+    onsets = 0.4:0.4:0.4*10;  onsets=round(onsets,1);  % vector of all sample onset times relative to pre-mask; epoched around pre-mask on
+else
+    onsets = 0.386:0.386:0.386*10; 
+end
 smptimes = times(times>=smpwin(1) & times<=smpwin(2));  % getting vector of sample times relative to dot onset
 
 for s = 1:length(onsets)

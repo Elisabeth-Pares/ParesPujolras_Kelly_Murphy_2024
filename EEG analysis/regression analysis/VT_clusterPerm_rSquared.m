@@ -1,35 +1,39 @@
 % Run cluster-based permutation tests
 % Permutation parameters 
-function [cluster] = VT_TFA_cluster_effEv(permData,par)
-
-%%
+function [stat1] = VT_clusterPerm_rSquared(exp,permData, chanLab, modelLab)
 cfg_dat = struct;
 % close all; 
-chans = 1; %Just lateralisation
+
 load('C:\Users\elisa\Desktop\VolatilityTask\Analysis\functions\chanlocsBioSemi_128_noext.mat')
 
 % load('chanlocsBioSemi_128_noext.mat') %Load channel locations
-cfg_dat.label       = {chanlocs.labels};  %Channel locations; (exp.CPPCluster_small)
-cfg_dat.label       =  {'MotorLat'};%Channel locations; (exp.CPPCluster_small)
+chans = 1:128;
+% figure; topoplot([], chanlocs(chans)); 
+
+chans = 1; %Just lateralisation
+
+% load('chanlocsBioSemi_128_noext.mat') %Load channel locations
+cfg_dat.label       =  {'RsqDiff'};%Channel locations; (exp.CPPCluster_small)
 
 cfg = struct();
-cfg.feedback = 'yes';
+% cfg.feedback = 'yes';
 
 %Triangulation method
 cfg.layout           = 'biosemi128.lay';
 cfg_neighb           = [];
 cfg_neighb.layout    = ft_prepare_layout(cfg);%ft_prepare_layout(cfg_layout);
 cfg_neighb.method    = 'triangulation'; %triangulation
-cfg_neighb.feedback  = 'yes';
+cfg_neighb.feedback  = 'no';
 cfg.neighbours       = ft_prepare_neighbours(cfg_neighb); %ALL channels
+
 
 cfg_dat.fsample = 200;  % sampling rate
 cfg_dat.time = [0.005:1/cfg_dat.fsample:1]; 
 cfg_dat.dimord = 'chan_time';
 
 cfg.minnbchan   = [0];
-cfg.latency     = [0,1]%'all'; %Analysis period
-cfg.channel     = 1:length(chans); %[1:128];%exp.centroParietal;  %
+cfg.latency     = 'all'; %'all'; %Analysis period
+cfg.channel     = 1;  %
 cfg.avgoverchan = 'no';
 cfg.avgovertime = 'no'; %no
 cfg.parameter   = 'values';
@@ -57,29 +61,25 @@ cfg.correcttail = 'prob';
 % Without the 'prob' correction, the p-values in stats.negclusters and
 % stats.posclusters would otherwise be one-tailed p-values
  
-cfg.numrandomization = 10000;
+cfg.numrandomization = 1000;
 
 %Design matrix 
-Nsub = 20;
+Nsub = 20
 cfg.design(1,1:2*Nsub)  = [ones(1,Nsub) 2*ones(1,Nsub)];
 cfg.design(2,1:2*Nsub)  = [1:Nsub 1:Nsub];
 cfg.ivar                = 1; % the 1st row in cfg.design contains the independent variable
 cfg.uvar                = 2; % the 2nd row in cfg.design contains the subject number
 
-chans = 1
-
 %Null condition 
-for s = 1:Nsub
-    all_trl_psi{s} = cfg_dat; all_trl_psi{s}.values = permData.psi{s}(chans,:);%(exp.CPPCluster_small,:);
-    all_trl_effEv{s} = cfg_dat; all_trl_effEv{s}.values = permData.effEv{s}(chans,:);%(exp.CPPCluster_small,:);
- 
+for s = 1:20
+    all_trl_diff{s} = cfg_dat; all_trl_diff{s}.values = permData.deltaPsi_minus_LLR.(modelLab).(chanLab){s}(1,:);%(exp.CPPCluster_small,:);
+
     all_trl_null{s} = cfg_dat;
-    all_trl_null{s}.values = zeros(size(all_trl_effEv{1}.values,1),size(all_trl_effEv{1}.values,2))
+    all_trl_null{s}.values = zeros(size(all_trl_diff{1}.values,1),size(all_trl_diff{1}.values,2))
 
 end
 
-stat1 = ft_timelockstatistics(cfg,all_trl_psi{:},all_trl_null{:});
-stat2 = ft_timelockstatistics(cfg,all_trl_effEv{:},all_trl_null{:});
+stat1 = ft_timelockstatistics(cfg,all_trl_diff{:},all_trl_null{:});
 
-cluster.stat1 = stat1; 
-cluster.stat2 = stat2; 
+stat1.channels = exp.centroParietal;
+
