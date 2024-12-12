@@ -12,9 +12,9 @@ Code shared here was developed using Matlab R2021a, the [EEGlab toolbox](https:/
 ## Behavioural analysis:
 Contains scripts for fitting several models to choice data & extracting transformed stimulus values based on the fitted models. 
 The basic model-fitting functions are based on analysis code from a previous study ([Murphy et al. 2021, Nat. Neuro](https://www.nature.com/articles/s41593-021-00839-z)), with publicly available code [here](https://github.com/DonnerLab/2021_Murphy_Adaptive-Circuit-Dynamics-Across-Human-Cortex). 
-Transformed stimulus values from the normative Glaze_basic.m model are then used as regressors for EEG analysis. 
+Includes plotting code for all behavioural data & model fitting results in Figure 1.
 
 ## EEG analysis: 
-Includes raw EEG data loading, preprocessing & regression analysis. 
+Includes raw EEG data loading, preprocessing, regression & residuals analysis, as well as statistics and plotting code for Figures 2-4 in the paper.  
 
 
