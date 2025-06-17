@@ -2,7 +2,7 @@
 
 This repository contains analysis scripts for the following paper:
 
-[Parés-Pujolràs, E., Kelly, S. P., & Murphy, P. R. (2025). Dissociable encoding of evolving beliefs and momentary belief updates in distinct neural decision signals. Nature Communications, 16(1), 3922.]
+[Parés-Pujolràs, E., Kelly, S. P., & Murphy, P. R. (2025). Dissociable encoding of evolving beliefs and momentary belief updates in distinct neural decision signals. Nature Communications, 16(1), 3922.](https://www.nature.com/articles/s41467-025-58861-9)
 
 The scripts included in the repository and the data on OSF (https://doi.org/10.17605/OSF.IO/NHQEV) enable the replication of the data analysis and figures reported in the paper.
 All are shared under a CC-BY 4.0 license.
